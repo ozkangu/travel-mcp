@@ -1,4 +1,6 @@
 export interface ServerConfig {
+  port: number;
+  host: string;
   mapProvider: 'osm' | 'mapbox';
   mapboxToken?: string;
   geocodingProvider: 'nominatim' | 'mapbox';
@@ -13,6 +15,8 @@ export interface ServerConfig {
 
 export function loadConfig(): ServerConfig {
   return {
+    port: parseInt(process.env.PORT || '3000', 10),
+    host: process.env.HOST || '0.0.0.0',
     mapProvider: (process.env.MAP_PROVIDER as 'osm' | 'mapbox') || 'osm',
     mapboxToken: process.env.MAPBOX_TOKEN,
     geocodingProvider: (process.env.GEOCODING_PROVIDER as 'nominatim' | 'mapbox') || 'nominatim',

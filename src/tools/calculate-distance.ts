@@ -2,19 +2,24 @@ import { z } from 'zod/v4';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { calculateDistance } from '../services/distance.js';
 
+const coordSchema = z.object({
+  latitude: z.number().describe('Latitude'),
+  longitude: z.number().describe('Longitude'),
+});
+
 export function registerCalculateDistanceTool(server: McpServer): void {
   server.registerTool('calculate_distance', {
     description: 'Calculate the distance between two geographic points using the Haversine formula. Supports km, miles, and meters.',
     inputSchema: {
-      point1: z.tuple([z.number(), z.number()]).describe('First point as [latitude, longitude]'),
-      point2: z.tuple([z.number(), z.number()]).describe('Second point as [latitude, longitude]'),
+      point1: coordSchema.describe('First point coordinates'),
+      point2: coordSchema.describe('Second point coordinates'),
       unit: z.enum(['km', 'mi', 'm']).default('km').describe('Distance unit: km, mi, or m'),
     },
   }, async (args) => {
     try {
       const result = calculateDistance(
-        args.point1 as [number, number],
-        args.point2 as [number, number],
+        [args.point1.latitude, args.point1.longitude],
+        [args.point2.latitude, args.point2.longitude],
         args.unit,
       );
 

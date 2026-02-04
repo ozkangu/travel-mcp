@@ -1,8 +1,33 @@
 import StaticMaps from 'staticmaps';
+import sharp from 'sharp';
+import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import type { ServerConfig } from '../types/config.js';
 import type { Marker, Polyline, Polygon } from '../types/geo.js';
 
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+const MARKER_DIR = resolve(tmpdir(), 'mcp-map-markers');
+
+async function ensureMarkerIcon(color: string = '#FF0000'): Promise<string> {
+  if (!existsSync(MARKER_DIR)) mkdirSync(MARKER_DIR, { recursive: true });
+
+  const safe = color.replace('#', '');
+  const filePath = resolve(MARKER_DIR, `marker-${safe}.png`);
+
+  if (!existsSync(filePath)) {
+    const svg = `<svg width="24" height="32" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="12" cy="28" rx="5" ry="3" fill="rgba(0,0,0,0.3)"/>
+      <path d="M12 0C6 0 1 5 1 11c0 8 11 20 11 20s11-12 11-20C23 5 18 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/>
+      <circle cx="12" cy="11" r="4" fill="white"/>
+    </svg>`;
+    const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
+    writeFileSync(filePath, pngBuffer);
+  }
+
+  return filePath;
+}
 
 interface RenderOptions {
   center: [number, number]; // [lat, lng]
@@ -42,12 +67,26 @@ export class MapRenderer {
     // Add markers
     if (options.markers && options.markers.length > 0) {
       for (const marker of options.markers) {
+        const iconPath = await ensureMarkerIcon(marker.color || '#FF0000');
         map.addMarker({
           coord: [marker.position[1], marker.position[0]], // staticmaps uses [lng, lat]
-          img: marker.color ? undefined : undefined, // use default marker
-          height: marker.size || 24,
-          width: marker.size || 24,
+          img: iconPath,
+          height: 32,
+          width: 24,
+          offsetX: 12,
+          offsetY: 32,
         });
+
+        // Add label as text if provided
+        if (marker.label) {
+          map.addText({
+            coord: [marker.position[1], marker.position[0]],
+            text: marker.label,
+            size: 12,
+            color: '#000000',
+            anchor: 'middle',
+          });
+        }
       }
     }
 
